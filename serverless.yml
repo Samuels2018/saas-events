@@ -1,0 +1,89 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: mel123
+# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
+app: event-send
+# "service" is the name of this project. This will also be added to your AWS resource names.
+service: saas-events
+
+plugins:
+  - serverless-offline
+  - serverless-dynamodb-local
+
+package:
+  individually: true
+  patterns:
+    - "!*/**"
+
+custom:
+  dynamodb:
+  # If you only want to use DynamoDB Local in some stages, declare them here
+    stages:
+      - dev
+    start:
+      port: 8000
+      inMemory: true
+      migrate: true
+    # Uncomment only if you already have a DynamoDB running locally
+    # noStart: true
+
+
+stages:
+  default:
+    params:
+      tableName: "users-table-${sls:stage}"
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt: [UsersTable, Arn]
+  environment:
+    USERS_TABLE: ${param:tableName}
+
+functions:
+  send-event-email:
+    handler: send-event-email/handler.main
+    runtime: python3.12
+    package:
+      patterns:
+        - "send-event-email/handler.py"
+
+  send-event-renovation:
+    handler: send-event-renovation/handler.main
+    package:
+      patterns:
+        - "send-event-renovation/handler.js"
+
+  processOrderChanges:
+    handler: handler.process
+    events:
+      - stream:
+          type: dynamodb
+          arn: !GetAtt OrdersTable.StreamArn
+          batchSize: 10
+          startingPosition: LATEST
+
+resources:
+  Resources:
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${param:tableName}

@@ -1,0 +1,5 @@
+node_modules
+.serverless
+.venv
+__pycache__
+.mypy_cache
