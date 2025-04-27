@@ -53,11 +53,11 @@ provider:
 
 functions:
   send-event-email:
-    handler: send-event-email/handler.main
+    handler: send_event_email/handler.main
     runtime: python3.12
     package:
       patterns:
-        - "send-event-email/handler.py"
+        - "send_event_email/handler.py"
 
   send-event-renovation:
     handler: send-event-renovation/handler.main
